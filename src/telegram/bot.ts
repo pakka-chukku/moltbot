@@ -36,6 +36,7 @@ import {
 } from "./bot/helpers.js";
 import type { TelegramContext, TelegramMessage } from "./bot/types.js";
 import { registerTelegramHandlers } from "./bot-handlers.js";
+import type { TelegramExecApprovalHandler } from "./monitor/exec-approvals.js";
 import { createTelegramMessageProcessor } from "./bot-message.js";
 import { registerTelegramNativeCommands } from "./bot-native-commands.js";
 import {
@@ -62,6 +63,7 @@ export type TelegramBotOptions = {
     lastUpdateId?: number | null;
     onUpdateId?: (updateId: number) => void | Promise<void>;
   };
+  execApprovalHandler?: TelegramExecApprovalHandler | null;
 };
 
 export function getTelegramSequentialKey(ctx: {
@@ -463,6 +465,7 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     shouldSkipUpdate,
     processMessage,
     logger,
+    execApprovalHandler: opts.execApprovalHandler,
   });
 
   return bot;

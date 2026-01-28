@@ -13,6 +13,7 @@ import { isRecoverableTelegramNetworkError } from "./network-errors.js";
 import { makeProxyFetch } from "./proxy.js";
 import { readTelegramUpdateOffset, writeTelegramUpdateOffset } from "./update-offset-store.js";
 import { startTelegramWebhook } from "./webhook.js";
+import { TelegramExecApprovalHandler } from "./monitor/exec-approvals.js";
 
 export type MonitorTelegramOpts = {
   token?: string;
@@ -126,6 +127,20 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     }
   };
 
+  // Create exec approval handler if configured
+  const execApprovalsConfig = account.config.execApprovals;
+  const execApprovalHandler =
+    execApprovalsConfig?.enabled && execApprovalsConfig.approvers?.length
+      ? new TelegramExecApprovalHandler({
+          token,
+          accountId: account.accountId,
+          config: execApprovalsConfig,
+          cfg,
+          runtime: opts.runtime,
+          api: null as any, // Will be set after bot creation
+        })
+      : null;
+
   const bot = createTelegramBot({
     token,
     runtime: opts.runtime,
@@ -136,21 +151,43 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       lastUpdateId,
       onUpdateId: persistUpdateId,
     },
+    execApprovalHandler,
   });
 
+  // Set the API on the handler now that the bot is created
+  if (execApprovalHandler) {
+    (execApprovalHandler as any).opts.api = bot.api;
+  }
+
+  // Start exec approval handler if configured
+  if (execApprovalHandler) {
+    await execApprovalHandler.start();
+  }
+
+  // Cleanup function to stop the handler
+  const cleanup = async () => {
+    if (execApprovalHandler) {
+      await execApprovalHandler.stop();
+    }
+  };
+
   if (opts.useWebhook) {
-    await startTelegramWebhook({
-      token,
-      accountId: account.accountId,
-      config: cfg,
-      path: opts.webhookPath,
-      port: opts.webhookPort,
-      secret: opts.webhookSecret,
-      runtime: opts.runtime as RuntimeEnv,
-      fetch: proxyFetch,
-      abortSignal: opts.abortSignal,
-      publicUrl: opts.webhookUrl,
-    });
+    try {
+      await startTelegramWebhook({
+        token,
+        accountId: account.accountId,
+        config: cfg,
+        path: opts.webhookPath,
+        port: opts.webhookPort,
+        secret: opts.webhookSecret,
+        runtime: opts.runtime as RuntimeEnv,
+        fetch: proxyFetch,
+        abortSignal: opts.abortSignal,
+        publicUrl: opts.webhookUrl,
+      });
+    } finally {
+      await cleanup();
+    }
     return;
   }
 
@@ -168,15 +205,18 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     try {
       // runner.task() returns a promise that resolves when the runner stops
       await runner.task();
+      await cleanup();
       return;
     } catch (err) {
       if (opts.abortSignal?.aborted) {
+        await cleanup();
         throw err;
       }
       const isConflict = isGetUpdatesConflict(err);
       const isRecoverable = isRecoverableTelegramNetworkError(err, { context: "polling" });
       const isNetworkError = isNetworkRelatedError(err);
       if (!isConflict && !isRecoverable && !isNetworkError) {
+        await cleanup();
         throw err;
       }
       restartAttempts += 1;
@@ -189,11 +229,18 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       try {
         await sleepWithAbort(delayMs, opts.abortSignal);
       } catch (sleepErr) {
-        if (opts.abortSignal?.aborted) return;
+        if (opts.abortSignal?.aborted) {
+          await cleanup();
+          return;
+        }
+        await cleanup();
         throw sleepErr;
       }
     } finally {
       opts.abortSignal?.removeEventListener("abort", stopOnAbort);
     }
   }
+
+  // Cleanup when exiting the while loop (abort signal was set)
+  await cleanup();
 }

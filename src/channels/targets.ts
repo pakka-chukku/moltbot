@@ -1,3 +1,9 @@
+export { type DirectoryConfigParams } from "./plugins/directory-config.js";
+export {
+  type ChannelDirectoryEntry,
+  type ChannelDirectoryEntryKind,
+} from "./plugins/types.core.js";
+
 export type MessagingTargetKind = "user" | "channel";
 
 export type MessagingTarget = {

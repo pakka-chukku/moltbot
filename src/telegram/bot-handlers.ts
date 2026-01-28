@@ -22,6 +22,11 @@ import { resolveTelegramInlineButtonsScope } from "./inline-buttons.js";
 import { readTelegramAllowFromStore } from "./pairing-store.js";
 import { resolveChannelConfigWrites } from "../channels/plugins/config-writes.js";
 import { buildInlineKeyboard } from "./send.js";
+import {
+  isExecApprovalCallbackData,
+  parseExecApprovalCallbackData,
+  type TelegramExecApprovalHandler,
+} from "./monitor/exec-approvals.js";
 
 export const registerTelegramHandlers = ({
   cfg,
@@ -37,6 +42,22 @@ export const registerTelegramHandlers = ({
   shouldSkipUpdate,
   processMessage,
   logger,
+  execApprovalHandler,
+}: {
+  cfg: any;
+  accountId: string;
+  bot: any;
+  opts: any;
+  runtime: any;
+  mediaMaxBytes: number;
+  telegramCfg: any;
+  groupAllowFrom: any;
+  resolveGroupPolicy: any;
+  resolveTelegramGroupConfig: any;
+  shouldSkipUpdate: any;
+  processMessage: any;
+  logger: any;
+  execApprovalHandler?: TelegramExecApprovalHandler | null;
 }) => {
   const TELEGRAM_TEXT_FRAGMENT_START_THRESHOLD_CHARS = 4000;
   const TELEGRAM_TEXT_FRAGMENT_MAX_GAP_MS = 1500;
@@ -367,6 +388,32 @@ export const registerTelegramHandlers = ({
           }
         }
         return;
+      }
+
+      // Handle exec approval callbacks
+      if (isExecApprovalCallbackData(data) && execApprovalHandler) {
+        const parsed = parseExecApprovalCallbackData(data);
+        if (parsed) {
+          const userId = callback.from?.id ? String(callback.from.id) : undefined;
+          const ok = await execApprovalHandler.handleCallbackQuery(
+            parsed.shortId,
+            parsed.action,
+            userId,
+          );
+          if (!ok) {
+            // Update message to show invalid/expired state
+            try {
+              await bot.api.editMessageText(
+                callbackMessage.chat.id,
+                callbackMessage.message_id,
+                "This approval is no longer valid or has already been resolved.",
+              );
+            } catch {
+              // Message may have been deleted or already updated
+            }
+          }
+          return;
+        }
       }
 
       const syntheticMessage: TelegramMessage = {
