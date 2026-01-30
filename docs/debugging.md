@@ -154,6 +154,68 @@ Default file:
 > Note: this is only emitted by processes using pi-mono’s
 > `openai-completions` provider.
 
+## Log file management
+
+Moltbot writes daily rolling logs to `/tmp/moltbot/` by default. To prevent
+unbounded disk growth, you can configure size-based rotation and error spike
+alerting.
+
+### Size-based rotation
+
+Limit individual log file sizes and the total number of rotations per day:
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "maxFileSize": "100MB",
+    "maxFilesPerDay": 5
+  }
+}
+```
+
+When a log file exceeds `maxFileSize`, it rotates to a numbered suffix
+(e.g., `moltbot-2026-01-30.1.log`). Once `maxFilesPerDay` rotations are
+reached, further log entries for that day are dropped to prevent disk
+exhaustion.
+
+Defaults:
+- `maxFileSize`: `"100MB"`
+- `maxFilesPerDay`: `5`
+
+Size format supports: `B`, `KB`, `MB`, `GB` (e.g., `"50MB"`, `"1GB"`).
+
+### Error spike alerting
+
+Get notified via Telegram when errors spike beyond a threshold:
+
+```json
+{
+  "logging": {
+    "alertOnErrorSpike": {
+      "enabled": true,
+      "threshold": 100,
+      "windowSeconds": 60,
+      "telegramChatId": "123456789",
+      "cooldownSeconds": 300
+    }
+  }
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `false` | Enable error spike alerting |
+| `threshold` | `100` | Number of errors to trigger alert |
+| `windowSeconds` | `60` | Time window for counting errors |
+| `telegramChatId` | - | Telegram chat ID to receive alerts (required) |
+| `cooldownSeconds` | `300` | Minimum time between alerts |
+
+When the error count within `windowSeconds` exceeds `threshold`, Moltbot sends
+a Telegram alert. The `cooldownSeconds` prevents alert flooding.
+
+Note: Requires a configured Telegram bot token in `channels.telegram`.
+
 ## Safety notes
 
 - Raw stream logs can include full prompts, tool output, and user data.

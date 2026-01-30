@@ -99,6 +99,19 @@ export type SessionConfig = {
   };
 };
 
+export type LoggingAlertConfig = {
+  /** Enable error spike alerting. Default: false. */
+  enabled?: boolean;
+  /** Error count threshold to trigger alert. Default: 100. */
+  threshold?: number;
+  /** Time window in seconds for counting errors. Default: 60. */
+  windowSeconds?: number;
+  /** Telegram chat ID to send alerts to. Required if enabled. */
+  telegramChatId?: string | number;
+  /** Cooldown in seconds before sending another alert. Default: 300. */
+  cooldownSeconds?: number;
+};
+
 export type LoggingConfig = {
   level?: "silent" | "fatal" | "error" | "warn" | "info" | "debug" | "trace";
   file?: string;
@@ -108,6 +121,12 @@ export type LoggingConfig = {
   redactSensitive?: "off" | "tools";
   /** Regex patterns used to redact sensitive tokens (defaults apply when unset). */
   redactPatterns?: string[];
+  /** Max log file size before rotation (e.g., "100MB", "50MB"). Default: "100MB". */
+  maxFileSize?: string;
+  /** Max rotated files per day (prevents unbounded growth). Default: 5. */
+  maxFilesPerDay?: number;
+  /** Alert configuration for error spikes. */
+  alertOnErrorSpike?: LoggingAlertConfig;
 };
 
 export type DiagnosticsOtelConfig = {

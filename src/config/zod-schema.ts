@@ -121,6 +121,18 @@ export const MoltbotSchema = z
           .optional(),
         redactSensitive: z.union([z.literal("off"), z.literal("tools")]).optional(),
         redactPatterns: z.array(z.string()).optional(),
+        maxFileSize: z.string().optional(),
+        maxFilesPerDay: z.number().int().min(1).max(100).optional(),
+        alertOnErrorSpike: z
+          .object({
+            enabled: z.boolean().optional(),
+            threshold: z.number().int().min(1).optional(),
+            windowSeconds: z.number().int().min(1).optional(),
+            telegramChatId: z.union([z.string(), z.number()]).optional(),
+            cooldownSeconds: z.number().int().min(0).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),
