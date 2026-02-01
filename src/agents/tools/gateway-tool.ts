@@ -62,6 +62,8 @@ const GatewayToolSchema = Type.Object({
 export function createGatewayTool(opts?: {
   agentSessionKey?: string;
   config?: OpenClawConfig;
+  /** Whether elevated mode is allowed for this session. Required for config.get. */
+  elevatedAllowed?: boolean;
 }): AnyAgentTool {
   return {
     label: "Gateway",
@@ -163,6 +165,14 @@ export function createGatewayTool(opts?: {
       const gatewayOpts = { gatewayUrl, gatewayToken, timeoutMs };
 
       if (action === "config.get") {
+        // config.get returns the full config with substituted secrets.
+        // Require elevated access to prevent prompt injection attacks from exfiltrating secrets.
+        if (!opts?.elevatedAllowed) {
+          throw new Error(
+            "config.get requires elevated access. " +
+              "Enable elevated mode (tools.elevated.enabled) or use a trusted session.",
+          );
+        }
         const result = await callGatewayTool("config.get", gatewayOpts, {});
         return jsonResult({ ok: true, result });
       }

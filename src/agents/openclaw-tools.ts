@@ -53,6 +53,8 @@ export function createOpenClawTools(options?: {
   modelHasVision?: boolean;
   /** Explicit agent ID override for cron/hook sessions. */
   requesterAgentIdOverride?: string;
+  /** Whether elevated mode is allowed for this session. Required for gateway config.get. */
+  elevatedAllowed?: boolean;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -100,6 +102,7 @@ export function createOpenClawTools(options?: {
     createGatewayTool({
       agentSessionKey: options?.agentSessionKey,
       config: options?.config,
+      elevatedAllowed: options?.elevatedAllowed,
     }),
     createAgentsListTool({
       agentSessionKey: options?.agentSessionKey,

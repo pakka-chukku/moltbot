@@ -156,6 +156,8 @@ export function createOpenClawCodingTools(options?: {
   hasRepliedRef?: { value: boolean };
   /** If true, the model has native vision capability */
   modelHasVision?: boolean;
+  /** Whether elevated mode is allowed for this session. Required for gateway config.get. */
+  elevatedAllowed?: boolean;
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -348,6 +350,7 @@ export function createOpenClawCodingTools(options?: {
       hasRepliedRef: options?.hasRepliedRef,
       modelHasVision: options?.modelHasVision,
       requesterAgentIdOverride: agentId,
+      elevatedAllowed: options?.elevatedAllowed,
     }),
   ];
   const coreToolNames = new Set(

@@ -238,6 +238,7 @@ export async function runEmbeddedAttempt(
           replyToMode: params.replyToMode,
           hasRepliedRef: params.hasRepliedRef,
           modelHasVision,
+          elevatedAllowed: params.bashElevated?.allowed,
         });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });

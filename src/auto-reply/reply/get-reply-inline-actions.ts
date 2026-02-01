@@ -179,6 +179,7 @@ export async function handleInlineActions(params: {
         agentDir,
         workspaceDir,
         config: cfg,
+        elevatedAllowed,
       });
 
       const tool = tools.find((candidate) => candidate.name === dispatch.toolName);
