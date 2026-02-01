@@ -2,9 +2,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
-
+import type { RuntimeEnv } from "./runtime.js";
 import { setVerbose } from "./globals.js";
 import { logDebug, logError, logInfo, logSuccess, logWarn } from "./logger.js";
 import {
@@ -14,7 +13,6 @@ import {
   parseFileSize,
   getRotatedPath,
 } from "./logging.js";
-import type { RuntimeEnv } from "./runtime.js";
 
 describe("logger helpers", () => {
   afterEach(() => {
@@ -77,10 +75,10 @@ describe("logger helpers", () => {
     resetLogger();
     setLoggerOverride({}); // force defaults regardless of user config
     const today = localDateString(new Date());
-    const todayPath = path.join(DEFAULT_LOG_DIR, `moltbot-${today}.log`);
+    const todayPath = path.join(DEFAULT_LOG_DIR, `openclaw-${today}.log`);
 
     // create an old file to be pruned
-    const oldPath = path.join(DEFAULT_LOG_DIR, "moltbot-2000-01-01.log");
+    const oldPath = path.join(DEFAULT_LOG_DIR, "openclaw-2000-01-01.log");
     fs.mkdirSync(DEFAULT_LOG_DIR, { recursive: true });
     fs.writeFileSync(oldPath, "old");
     fs.utimesSync(oldPath, new Date(0), new Date(0));
@@ -97,7 +95,7 @@ describe("logger helpers", () => {
 });
 
 function pathForTest() {
-  const file = path.join(os.tmpdir(), `moltbot-log-${crypto.randomUUID()}.log`);
+  const file = path.join(os.tmpdir(), `openclaw-log-${crypto.randomUUID()}.log`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   return file;
 }

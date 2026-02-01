@@ -1,21 +1,19 @@
-import { createRequire } from "node:module";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-
 import { Logger as TsLogger } from "tslog";
-
-import type { LoggingAlertConfig, MoltbotConfig } from "../config/types.js";
+import type { LoggingAlertConfig, OpenClawConfig } from "../config/types.js";
 import type { ConsoleStyle } from "./console.js";
-import { type LogLevel, levelToMinLevel, normalizeLogLevel } from "./levels.js";
 import { readLoggingConfig } from "./config.js";
+import { type LogLevel, levelToMinLevel, normalizeLogLevel } from "./levels.js";
 import { loggingState } from "./state.js";
 
 // Pin to /tmp so mac Debug UI and docs match; os.tmpdir() can be a per-user
 // randomized path on macOS which made the "Open log" button a no-op.
-export const DEFAULT_LOG_DIR = "/tmp/moltbot";
-export const DEFAULT_LOG_FILE = path.join(DEFAULT_LOG_DIR, "moltbot.log"); // legacy single-file path
+export const DEFAULT_LOG_DIR = "/tmp/openclaw";
+export const DEFAULT_LOG_FILE = path.join(DEFAULT_LOG_DIR, "openclaw.log"); // legacy single-file path
 
-const LOG_PREFIX = "moltbot";
+const LOG_PREFIX = "openclaw";
 const LOG_SUFFIX = ".log";
 const MAX_LOG_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -68,7 +66,9 @@ let alertConfig: LoggingAlertConfig | undefined;
 /** Parse size string like "100MB", "50MB", "1GB" to bytes */
 function parseFileSize(size: string): number {
   const match = size.match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)$/i);
-  if (!match) return DEFAULT_MAX_FILE_SIZE;
+  if (!match) {
+    return DEFAULT_MAX_FILE_SIZE;
+  }
   const value = parseFloat(match[1]);
   const unit = match[2].toUpperCase();
   const multipliers: Record<string, number> = {
@@ -119,7 +119,9 @@ function getFileSize(filePath: string): number {
 
 /** Track error and check if alert should be sent */
 function trackErrorAndCheckAlert(): boolean {
-  if (!alertConfig?.enabled) return false;
+  if (!alertConfig?.enabled) {
+    return false;
+  }
 
   const now = Date.now();
   const threshold = alertConfig.threshold ?? DEFAULT_ALERT_THRESHOLD;
@@ -147,13 +149,15 @@ function trackErrorAndCheckAlert(): boolean {
 /** Send alert via Telegram (async, fire-and-forget) */
 function sendTelegramAlert(errorCount: number, windowSeconds: number): void {
   const chatId = alertConfig?.telegramChatId;
-  if (!chatId) return;
+  if (!chatId) {
+    return;
+  }
 
   // Read token from config
   let token: string | undefined;
   try {
     const loaded = requireConfig("../config/config.js") as {
-      loadConfig?: () => MoltbotConfig;
+      loadConfig?: () => OpenClawConfig;
     };
     const cfg = loaded.loadConfig?.();
     const telegramConfig = cfg?.channels?.telegram;
@@ -173,13 +177,15 @@ function sendTelegramAlert(errorCount: number, windowSeconds: number): void {
     return;
   }
 
-  if (!token) return;
+  if (!token) {
+    return;
+  }
 
   const message =
-    `⚠️ *Moltbot Log Alert*\n\n` +
+    `⚠️ *OpenClaw Log Alert*\n\n` +
     `Detected ${errorCount} errors in the last ${windowSeconds} seconds.\n\n` +
     `This may indicate a problem requiring attention.\n\n` +
-    `_Check logs at: /tmp/moltbot/_`;
+    `_Check logs at: /tmp/openclaw/_`;
 
   // Fire and forget - don't block logging
   fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -197,7 +203,9 @@ function sendTelegramAlert(errorCount: number, windowSeconds: number): void {
 
 function attachExternalTransport(logger: TsLogger<LogObj>, transport: LogTransport): void {
   logger.attachTransport((logObj: LogObj) => {
-    if (!externalTransports.has(transport)) return;
+    if (!externalTransports.has(transport)) {
+      return;
+    }
     try {
       transport(logObj as LogTransportRecord);
     } catch {
@@ -207,12 +215,12 @@ function attachExternalTransport(logger: TsLogger<LogObj>, transport: LogTranspo
 }
 
 function resolveSettings(): ResolvedSettings {
-  let cfg: MoltbotConfig["logging"] | undefined =
+  let cfg: OpenClawConfig["logging"] | undefined =
     (loggingState.overrideSettings as LoggerSettings | null) ?? readLoggingConfig();
   if (!cfg) {
     try {
       const loaded = requireConfig("../config/config.js") as {
-        loadConfig?: () => MoltbotConfig;
+        loadConfig?: () => OpenClawConfig;
       };
       cfg = loaded.loadConfig?.().logging;
     } catch {
@@ -231,14 +239,20 @@ function resolveSettings(): ResolvedSettings {
 }
 
 function settingsChanged(a: ResolvedSettings | null, b: ResolvedSettings) {
-  if (!a) return true;
+  if (!a) {
+    return true;
+  }
   return a.level !== b.level || a.file !== b.file;
 }
 
 export function isFileLogLevelEnabled(level: LogLevel): boolean {
   const settings = (loggingState.cachedSettings as ResolvedSettings | null) ?? resolveSettings();
-  if (!loggingState.cachedSettings) loggingState.cachedSettings = settings;
-  if (settings.level === "silent") return false;
+  if (!loggingState.cachedSettings) {
+    loggingState.cachedSettings = settings;
+  }
+  if (settings.level === "silent") {
+    return false;
+  }
   return levelToMinLevel(level) <= levelToMinLevel(settings.level);
 }
 
@@ -255,7 +269,7 @@ function buildLogger(settings: ResolvedSettings): TsLogger<LogObj> {
   currentRotationIndex = countRotationFiles(settings.file);
 
   const logger = new TsLogger<LogObj>({
-    name: "moltbot",
+    name: "openclaw",
     minLevel: levelToMinLevel(settings.level),
     type: "hidden", // no ansi formatting
   });
@@ -433,8 +447,12 @@ function pruneOldRollingLogs(dir: string): void {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     const cutoff = Date.now() - MAX_LOG_AGE_MS;
     for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      if (!entry.name.startsWith(`${LOG_PREFIX}-`) || !entry.name.endsWith(LOG_SUFFIX)) continue;
+      if (!entry.isFile()) {
+        continue;
+      }
+      if (!entry.name.startsWith(`${LOG_PREFIX}-`) || !entry.name.endsWith(LOG_SUFFIX)) {
+        continue;
+      }
       const fullPath = path.join(dir, entry.name);
       try {
         const stat = fs.statSync(fullPath);

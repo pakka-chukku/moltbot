@@ -1,12 +1,12 @@
 import type { Api as TelegramApi } from "grammy";
-import type { MoltbotConfig } from "../../config/config.js";
-import { GatewayClient } from "../../gateway/client.js";
-import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../../utils/message-channel.js";
+import type { OpenClawConfig } from "../../config/config.js";
+import type { TelegramExecApprovalConfig } from "../../config/types.telegram.js";
 import type { EventFrame } from "../../gateway/protocol/index.js";
 import type { ExecApprovalDecision } from "../../infra/exec-approvals.js";
-import { logDebug, logError } from "../../logger.js";
-import type { TelegramExecApprovalConfig } from "../../config/types.telegram.js";
 import type { RuntimeEnv } from "../../runtime.js";
+import { GatewayClient } from "../../gateway/client.js";
+import { logDebug, logError } from "../../logger.js";
+import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../../utils/message-channel.js";
 
 const EXEC_APPROVAL_PREFIX = "ea";
 
@@ -60,9 +60,13 @@ export function buildExecApprovalCallbackData(
 export function parseExecApprovalCallbackData(
   data: string,
 ): { shortId: string; action: ExecApprovalDecision } | null {
-  if (!data || !data.startsWith(`${EXEC_APPROVAL_PREFIX}:`)) return null;
+  if (!data || !data.startsWith(`${EXEC_APPROVAL_PREFIX}:`)) {
+    return null;
+  }
   const parts = data.split(":");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3) {
+    return null;
+  }
   const shortId = parts[1];
   const actionChar = parts[2];
   const action: ExecApprovalDecision | null =
@@ -73,7 +77,9 @@ export function parseExecApprovalCallbackData(
         : actionChar === "d"
           ? "deny"
           : null;
-  if (!action || !shortId) return null;
+  if (!action || !shortId) {
+    return null;
+  }
   return { shortId, action };
 }
 
@@ -178,7 +184,7 @@ export type TelegramExecApprovalHandlerOpts = {
   accountId: string;
   config: TelegramExecApprovalConfig;
   gatewayUrl?: string;
-  cfg: MoltbotConfig;
+  cfg: OpenClawConfig;
   runtime?: RuntimeEnv;
   api: TelegramApi;
 };
@@ -197,19 +203,29 @@ export class TelegramExecApprovalHandler {
 
   shouldHandle(request: ExecApprovalRequest): boolean {
     const config = this.opts.config;
-    if (!config.enabled) return false;
-    if (!config.approvers || config.approvers.length === 0) return false;
+    if (!config.enabled) {
+      return false;
+    }
+    if (!config.approvers || config.approvers.length === 0) {
+      return false;
+    }
 
     // Check agent filter
     if (config.agentFilter?.length) {
-      if (!request.request.agentId) return false;
-      if (!config.agentFilter.includes(request.request.agentId)) return false;
+      if (!request.request.agentId) {
+        return false;
+      }
+      if (!config.agentFilter.includes(request.request.agentId)) {
+        return false;
+      }
     }
 
     // Check session filter (substring match or regex)
     if (config.sessionFilter?.length) {
       const session = request.request.sessionKey;
-      if (!session) return false;
+      if (!session) {
+        return false;
+      }
       const matches = config.sessionFilter.some((p) => {
         try {
           return session.includes(p) || new RegExp(p).test(session);
@@ -217,14 +233,18 @@ export class TelegramExecApprovalHandler {
           return session.includes(p);
         }
       });
-      if (!matches) return false;
+      if (!matches) {
+        return false;
+      }
     }
 
     return true;
   }
 
   async start(): Promise<void> {
-    if (this.started) return;
+    if (this.started) {
+      return;
+    }
     this.started = true;
 
     const config = this.opts.config;
@@ -269,7 +289,9 @@ export class TelegramExecApprovalHandler {
   }
 
   async stop(): Promise<void> {
-    if (!this.started) return;
+    if (!this.started) {
+      return;
+    }
     this.started = false;
 
     // Clear all pending timeouts
@@ -297,7 +319,9 @@ export class TelegramExecApprovalHandler {
   }
 
   private async handleApprovalRequested(request: ExecApprovalRequest): Promise<void> {
-    if (!this.shouldHandle(request)) return;
+    if (!this.shouldHandle(request)) {
+      return;
+    }
 
     logDebug(`telegram exec approvals: received request ${request.id}`);
 
@@ -347,7 +371,9 @@ export class TelegramExecApprovalHandler {
 
   private async handleApprovalResolved(resolved: ExecApprovalResolved): Promise<void> {
     const pending = this.pending.get(resolved.id);
-    if (!pending) return;
+    if (!pending) {
+      return;
+    }
 
     clearTimeout(pending.timeoutId);
     this.pending.delete(resolved.id);
@@ -357,7 +383,9 @@ export class TelegramExecApprovalHandler {
     const shortId = resolved.id.slice(0, 8);
     this.shortIdMap.delete(shortId);
 
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
     logDebug(`telegram exec approvals: resolved ${resolved.id} with ${resolved.decision}`);
 
@@ -370,7 +398,9 @@ export class TelegramExecApprovalHandler {
 
   private async handleApprovalTimeout(approvalId: string): Promise<void> {
     const pending = this.pending.get(approvalId);
-    if (!pending) return;
+    if (!pending) {
+      return;
+    }
 
     this.pending.delete(approvalId);
 
@@ -379,7 +409,9 @@ export class TelegramExecApprovalHandler {
     const shortId = approvalId.slice(0, 8);
     this.shortIdMap.delete(shortId);
 
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
     logDebug(`telegram exec approvals: timeout for ${approvalId}`);
 

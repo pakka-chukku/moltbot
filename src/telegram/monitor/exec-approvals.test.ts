@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TelegramExecApprovalConfig } from "../../config/types.telegram.js";
 import {
   buildExecApprovalCallbackData,
   parseExecApprovalCallbackData,
@@ -6,7 +7,6 @@ import {
   type ExecApprovalRequest,
   TelegramExecApprovalHandler,
 } from "./exec-approvals.js";
-import type { TelegramExecApprovalConfig } from "../../config/types.telegram.js";
 
 describe("buildExecApprovalCallbackData", () => {
   it("encodes approval id and action (allow-once)", () => {
