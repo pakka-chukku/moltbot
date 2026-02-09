@@ -143,10 +143,20 @@ export type TelegramAccountConfig = {
   linkPreview?: boolean;
   /** Exec approval forwarding configuration with inline buttons. */
   execApprovals?: TelegramExecApprovalConfig;
+  /**
+   * Per-channel outbound response prefix override.
+   *
+   * When set, this takes precedence over the global `messages.responsePrefix`.
+   * Use `""` to explicitly disable a global prefix for this channel.
+   * Use `"auto"` to derive `[{identity.name}]` from the routed agent.
+   */
+  responsePrefix?: string;
 };
 
 export type TelegramTopicConfig = {
   requireMention?: boolean;
+  /** Per-topic override for group message policy (open|disabled|allowlist). */
+  groupPolicy?: GroupPolicy;
   /** If specified, only load these skills for this topic. Omit = all skills; empty = no skills. */
   skills?: string[];
   /** If false, disable the bot for this topic. */
@@ -159,6 +169,8 @@ export type TelegramTopicConfig = {
 
 export type TelegramGroupConfig = {
   requireMention?: boolean;
+  /** Per-group override for group message policy (open|disabled|allowlist). */
+  groupPolicy?: GroupPolicy;
   /** Optional tool policy overrides for this group. */
   tools?: GroupToolPolicyConfig;
   toolsBySender?: GroupToolPolicyBySenderConfig;
