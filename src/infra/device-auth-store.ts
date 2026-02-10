@@ -60,9 +60,10 @@ function readStore(filePath: string): DeviceAuthStore | null {
 
 function writeStore(filePath: string, store: DeviceAuthStore): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
+  // Use 0o660 to allow group access (needed for CLI access to gateway state)
+  fs.writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o660 });
   try {
-    fs.chmodSync(filePath, 0o600);
+    fs.chmodSync(filePath, 0o660);
   } catch {
     // best-effort
   }
